@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useContext } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { AuthContext } from '../context/AuthContext'
 
 function Register() {
   const [form, setForm] = useState({
@@ -7,17 +9,32 @@ function Register() {
     email: '',
     password: '',
   })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const { login } = useContext(AuthContext)
+  const navigate = useNavigate()
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name || !form.email || !form.password) {
-      alert('Please fill all fields!')
+      setError('Please fill all fields!')
       return
     }
-    console.log('Register:', form)
+    try {
+      setLoading(true)
+      setError('')
+      const res = await axios.post('http://localhost:5000/api/auth/register', form)
+      login(res.data)
+      navigate('/')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Something went wrong!')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -33,9 +50,15 @@ function Register() {
           <p className="text-gray-400 text-sm mt-1">Start tracking your job applications</p>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
+            {error}
+          </div>
+        )}
+
         {/* Form */}
         <div className="flex flex-col gap-4">
-
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Full Name</label>
             <input
@@ -74,11 +97,11 @@ function Register() {
 
           <button
             onClick={handleSubmit}
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl text-sm font-medium transition-colors mt-2"
+            disabled={loading}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-xl text-sm font-medium transition-colors mt-2 disabled:opacity-60"
           >
-            Create Account
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
-
         </div>
 
         {/* Login Link */}
