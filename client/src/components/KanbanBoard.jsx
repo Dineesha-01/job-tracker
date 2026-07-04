@@ -3,6 +3,7 @@ import axios from 'axios'
 import JobCard from './JobCard'
 import AddJobModal from './AddJobModal'
 import { AuthContext } from '../context/AuthContext'
+import API_URL from '../config'
 
 const columnColors = {
   Applied: 'bg-blue-50 border-blue-200',
@@ -35,18 +36,16 @@ function KanbanBoard() {
 
   const columns = ['Applied', 'Interview', 'Offer', 'Rejected']
 
-  // Config for API calls
   const config = {
     headers: {
       Authorization: `Bearer ${user?.token}`,
     },
   }
 
-  // Load jobs from MongoDB
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/jobs', config)
+        const res = await axios.get(`${API_URL}/api/jobs`, config)
         setJobs(res.data)
       } catch (error) {
         console.log('Error fetching jobs:', error)
@@ -57,27 +56,24 @@ function KanbanBoard() {
     if (user) fetchJobs()
   }, [user])
 
-  // Add job to MongoDB
   const handleAddJob = async (form) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/jobs', form, config)
+      const res = await axios.post(`${API_URL}/api/jobs`, form, config)
       setJobs([...jobs, res.data])
     } catch (error) {
       console.log('Error adding job:', error)
     }
   }
 
-  // Delete job from MongoDB
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/jobs/${id}`, config)
+      await axios.delete(`${API_URL}/api/jobs/${id}`, config)
       setJobs(jobs.filter((job) => job._id !== id))
     } catch (error) {
       console.log('Error deleting job:', error)
     }
   }
 
-  // Get jobs for each column
   const getColumnJobs = (columnName) => {
     return jobs.filter((job) => {
       const matchesStatus = job.status === columnName
@@ -90,7 +86,6 @@ function KanbanBoard() {
     })
   }
 
-  // Stats
   const totalJobs = jobs.length
   const appliedCount = jobs.filter((j) => j.status === 'Applied').length
   const interviewCount = jobs.filter((j) => j.status === 'Interview').length
@@ -106,8 +101,6 @@ function KanbanBoard() {
 
   return (
     <div className="p-6">
-
-      {/* Stats Bar */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
           <div className="text-2xl font-bold text-gray-800">{totalJobs}</div>
@@ -127,7 +120,6 @@ function KanbanBoard() {
         </div>
       </div>
 
-      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">My Applications</h2>
@@ -141,7 +133,6 @@ function KanbanBoard() {
         </button>
       </div>
 
-      {/* Search & Filter */}
       <div className="flex gap-3 mb-6">
         <div className="flex-1 relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
@@ -170,7 +161,6 @@ function KanbanBoard() {
         </div>
       </div>
 
-      {/* Kanban Columns */}
       <div className="grid grid-cols-4 gap-4">
         {columns.map((columnName) => {
           const columnJobs = getColumnJobs(columnName)
@@ -209,14 +199,12 @@ function KanbanBoard() {
         })}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <AddJobModal
           onClose={() => setShowModal(false)}
           onAdd={handleAddJob}
         />
       )}
-
     </div>
   )
 }
