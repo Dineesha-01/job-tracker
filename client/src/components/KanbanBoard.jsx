@@ -1,22 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import axios from 'axios'
 import JobCard from './JobCard'
 import AddJobModal from './AddJobModal'
-
-const initialData = {
-  Applied: [
-    { id: 1, company: 'Google', role: 'Frontend Developer', status: 'Applied', date: '01 Jul 2026' },
-    { id: 2, company: 'Amazon', role: 'React Developer', status: 'Applied', date: '02 Jul 2026' },
-  ],
-  Interview: [
-    { id: 3, company: 'Microsoft', role: 'Full Stack Developer', status: 'Interview', date: '28 Jun 2026' },
-  ],
-  Offer: [
-    { id: 4, company: 'Infosys', role: 'Software Engineer', status: 'Offer', date: '25 Jun 2026' },
-  ],
-  Rejected: [
-    { id: 5, company: 'Wipro', role: 'UI Developer', status: 'Rejected', date: '20 Jun 2026' },
-  ],
-}
+import { AuthContext } from '../context/AuthContext'
 
 const columnColors = {
   Applied: 'bg-blue-50 border-blue-200',
@@ -40,45 +26,82 @@ const columnDotColors = {
 }
 
 function KanbanBoard() {
-  const [columns, setColumns] = useState(initialData)
+  const { user } = useContext(AuthContext)
+  const [jobs, setJobs] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('All')
+  const [loading, setLoading] = useState(true)
 
-  const totalJobs = Object.values(columns).reduce((acc, col) => acc + col.length, 0)
+  const columns = ['Applied', 'Interview', 'Offer', 'Rejected']
 
-  const handleAddJob = (form) => {
-    const newJob = {
-      id: Date.now(),
-      company: form.company,
-      role: form.role,
-      status: form.status,
-      date: form.date,
-      notes: form.notes,
+  // Config for API calls
+  const config = {
+    headers: {
+      Authorization: `Bearer ${user?.token}`,
+    },
+  }
+
+  // Load jobs from MongoDB
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/jobs', config)
+        setJobs(res.data)
+      } catch (error) {
+        console.log('Error fetching jobs:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-    setColumns({
-      ...columns,
-      [form.status]: [...columns[form.status], newJob],
-    })
+    if (user) fetchJobs()
+  }, [user])
+
+  // Add job to MongoDB
+  const handleAddJob = async (form) => {
+    try {
+      const res = await axios.post('http://localhost:5000/api/jobs', form, config)
+      setJobs([...jobs, res.data])
+    } catch (error) {
+      console.log('Error adding job:', error)
+    }
   }
 
-  const handleDelete = (status, id) => {
-    setColumns({
-      ...columns,
-      [status]: columns[status].filter((job) => job.id !== id),
-    })
+  // Delete job from MongoDB
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/jobs/${id}`, config)
+      setJobs(jobs.filter((job) => job._id !== id))
+    } catch (error) {
+      console.log('Error deleting job:', error)
+    }
   }
 
-  // Filter jobs based on search and status
-  const getFilteredJobs = (columnName) => {
-    return columns[columnName].filter((job) => {
+  // Get jobs for each column
+  const getColumnJobs = (columnName) => {
+    return jobs.filter((job) => {
+      const matchesStatus = job.status === columnName
       const matchesSearch =
         job.company.toLowerCase().includes(search.toLowerCase()) ||
         job.role.toLowerCase().includes(search.toLowerCase())
       const matchesFilter =
         filterStatus === 'All' || job.status === filterStatus
-      return matchesSearch && matchesFilter
+      return matchesStatus && matchesSearch && matchesFilter
     })
+  }
+
+  // Stats
+  const totalJobs = jobs.length
+  const appliedCount = jobs.filter((j) => j.status === 'Applied').length
+  const interviewCount = jobs.filter((j) => j.status === 'Interview').length
+  const offerCount = jobs.filter((j) => j.status === 'Offer').length
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <div className="text-purple-400 text-lg font-medium">Loading your jobs...</div>
+      </div>
+    )
   }
 
   return (
@@ -91,15 +114,15 @@ function KanbanBoard() {
           <div className="text-xs text-gray-400 mt-1 font-medium">Total Applied</div>
         </div>
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 shadow-sm text-center">
-          <div className="text-2xl font-bold text-blue-600">{columns.Applied.length}</div>
+          <div className="text-2xl font-bold text-blue-600">{appliedCount}</div>
           <div className="text-xs text-blue-400 mt-1 font-medium">Applied</div>
         </div>
         <div className="bg-yellow-50 rounded-2xl p-4 border border-yellow-100 shadow-sm text-center">
-          <div className="text-2xl font-bold text-yellow-600">{columns.Interview.length}</div>
+          <div className="text-2xl font-bold text-yellow-600">{interviewCount}</div>
           <div className="text-xs text-yellow-400 mt-1 font-medium">Interviews</div>
         </div>
         <div className="bg-green-50 rounded-2xl p-4 border border-green-100 shadow-sm text-center">
-          <div className="text-2xl font-bold text-green-600">{columns.Offer.length}</div>
+          <div className="text-2xl font-bold text-green-600">{offerCount}</div>
           <div className="text-xs text-green-400 mt-1 font-medium">Offers</div>
         </div>
       </div>
@@ -118,9 +141,8 @@ function KanbanBoard() {
         </button>
       </div>
 
-      {/* Search & Filter Bar */}
+      {/* Search & Filter */}
       <div className="flex gap-3 mb-6">
-        {/* Search */}
         <div className="flex-1 relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
           <input
@@ -131,8 +153,6 @@ function KanbanBoard() {
             className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-400 bg-white"
           />
         </div>
-
-        {/* Filter Buttons */}
         <div className="flex gap-2">
           {['All', 'Applied', 'Interview', 'Offer', 'Rejected'].map((status) => (
             <button
@@ -152,14 +172,13 @@ function KanbanBoard() {
 
       {/* Kanban Columns */}
       <div className="grid grid-cols-4 gap-4">
-        {Object.keys(columns).map((columnName) => {
-          const filteredJobs = getFilteredJobs(columnName)
+        {columns.map((columnName) => {
+          const columnJobs = getColumnJobs(columnName)
           return (
             <div
               key={columnName}
               className={`rounded-2xl border p-4 min-h-[500px] ${columnColors[columnName]}`}
             >
-              {/* Column Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${columnDotColors[columnName]}`}></div>
@@ -168,21 +187,20 @@ function KanbanBoard() {
                   </h3>
                 </div>
                 <span className="bg-white text-gray-500 text-xs font-semibold px-2 py-0.5 rounded-full shadow-sm">
-                  {filteredJobs.length}
+                  {columnJobs.length}
                 </span>
               </div>
 
-              {/* Job Cards */}
-              {filteredJobs.length === 0 ? (
+              {columnJobs.length === 0 ? (
                 <div className="text-center text-gray-300 text-xs mt-8">
                   No jobs found
                 </div>
               ) : (
-                filteredJobs.map((job) => (
+                columnJobs.map((job) => (
                   <JobCard
-                    key={job.id}
+                    key={job._id}
                     job={job}
-                    onDelete={() => handleDelete(columnName, job.id)}
+                    onDelete={() => handleDelete(job._id)}
                   />
                 ))
               )}
