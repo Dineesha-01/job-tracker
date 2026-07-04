@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const Job = require('../models/Job')
-const protect = require('../../server/middleware/authMiddleware')
+const protect = require('./authMiddleware')
 // GET all jobs for logged in user
 router.get('/', protect, async (req, res) => {
   try {
