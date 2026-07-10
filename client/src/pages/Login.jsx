@@ -59,7 +59,7 @@ function Login() {
               name="email"
               value={form.email}
               onChange={handleChange}
-              placeholder="e.g. dineesha@gmail.com"
+              placeholder="e.g. Johndoe@gmail.com"
               className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-400"
             />
           </div>
